@@ -83,7 +83,7 @@ class LayoGUIHandler(http.server.BaseHTTPRequestHandler):
             payload = {
                 "ollama_activo": ollama_activo,
                 "modelos_ollama": modelos_ollama,
-                "modelo_llm": modelos_ollama[0] if modelos_ollama else "qwen2.5:1.5b (Servidor Offline)",
+                "modelo_llm": modelos_ollama[0] if modelos_ollama else "llama3.2:1b",
                 "voz_onnx": voces_onnx[0] if voces_onnx else "es_ES-sharvard-medium.onnx",
                 "voces_disponibles": voces_onnx,
                 "errores_aprendidos": stats["errores_aprendidos"],
@@ -126,7 +126,17 @@ class LayoGUIHandler(http.server.BaseHTTPRequestHandler):
                     respuesta_texto = res_ai
                     accion = acc_ai
 
-            # Si hay una acción de sistema solicitada por la IA
+            # Inferencia automática de acción respaldada si la IA no incluyó etiqueta explícita
+            if not accion and mensaje:
+                msg_lc = mensaje.lower()
+                if "carpeta" in msg_lc and any(k in msg_lc for k in ["crea", "crear", "haz", "hacer", "nueva", "genera"]):
+                    accion = mensaje
+                elif any(k in msg_lc for k in ["mueve ", "mover ", "traslada "]):
+                    accion = mensaje
+                elif any(k in msg_lc for k in ["ejecuta ", "terminal ", "comando "]):
+                    accion = mensaje
+
+            # Si hay una acción de sistema solicitada por la IA o inferida
             if accion:
                 try:
                     from sistema_layo import ejecutar_comando_sistema, escuchar

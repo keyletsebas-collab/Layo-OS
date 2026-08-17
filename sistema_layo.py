@@ -679,8 +679,10 @@ class CerebroJarvis:
             "lanzar aplicaciones locales, reproducir música en Spotify, poner vídeos o música en YouTube, subir/bajar volumen, mutear, "
             "escribir código en VS Code, escribir texto en pantalla, tomar capturas de pantalla, apagar o reiniciar el sistema), "
             "DEBES obligatoriamente incorporar la etiqueta [ACTION: comando] al final de tu respuesta (acompañando a la de emoción).\n"
+            "REGLA CRÍTICA OBLIGATORIA PARA [ACTION: ...]: Sustituye SIEMPRE las palabras de ejemplo con los NOMBRES REALES indicados por el Señor. "
+            "Ejemplo: Si el Señor pide 'Crea una carpeta llamada proyectos_final', debes responder exactamente [ACTION: crea una carpeta llamada proyectos_final] (NUNCA uses la palabra de ejemplo 'nombre_carpeta').\n\n"
             "Formatos de comandos admitidos por la consola central:\n"
-            "- Crear carpetas físicas: [ACTION: crea una carpeta llamada nombre_carpeta]\n"
+            "- Crear carpetas físicas: [ACTION: crea una carpeta llamada <nombre_real>]\n"
             "- Mover archivos o carpetas: [ACTION: mueve el archivo nombre_origen a carpeta_destino]\n"
             "- Ejecutar comandos de consola/terminal: [ACTION: terminal comando_bash]\n"
             "- Leer y examinar archivos de la máquina: [ACTION: lee ruta_del_archivo]\n"
@@ -1258,12 +1260,27 @@ def buscar_archivo_o_carpeta_sistema(nombre_objetivo):
 # 3. INTERFAZ DE CONTROL FÍSICO DEL SISTEMA (MANOS)
 # =====================================================================
 def ejecutar_comando_sistema(comando, motor_voz, escuchar_func, cerebro=None):
+    if not comando or not isinstance(comando, str):
+        return None
     cmd = comando.strip()
     cmd_lc = cmd.lower()
 
     # --- CREACIÓN FÍSICA DE CARPETAS / DIRECTORIOS EN EL DISCO ---
     if "carpeta" in cmd_lc and any(k in cmd_lc for k in ["crea", "crear", "haz", "hacer", "nueva", "genera", "generar"]):
         nombre_c = cmd_lc
+        
+        # Si el comando trae un placeholder genérico de ejemplo
+        if any(p in nombre_c for p in ["nombre_carpeta", "nombre_real", "<nombre_real>", "nombre_de_la_carpeta"]):
+            if cerebro and hasattr(cerebro, "historial") and cerebro.historial:
+                for msg in reversed(cerebro.historial):
+                    if isinstance(msg, dict) and msg.get("role") == "user":
+                        txt_u = msg.get("content", "").strip()
+                        if "llamada " in txt_u.lower():
+                            nombre_c = txt_u.lower().split("llamada ")[1].strip()
+                        elif "carpeta " in txt_u.lower():
+                            nombre_c = txt_u.lower().split("carpeta ")[1].strip()
+                        break
+
         limpiezas = [
             "crea en mi escritorio una carpeta llamada", "crea en el escritorio una carpeta llamada",
             "crea una carpeta en mi escritorio llamada", "crea una carpeta en el escritorio llamada",
@@ -1275,7 +1292,7 @@ def ejecutar_comando_sistema(comando, motor_voz, escuchar_func, cerebro=None):
         for l in limpiezas:
             nombre_c = nombre_c.replace(l, "")
         
-        nombre_c = nombre_c.strip()
+        nombre_c = nombre_c.strip().strip('"').strip("'")
         if not nombre_c:
             nombre_c = "Nueva_Carpeta"
 
