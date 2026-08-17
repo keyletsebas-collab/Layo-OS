@@ -280,7 +280,6 @@ class MotorVocal:
         if self.motor == "piper" and self.modelo_piper:
             archivo_temp = "temp_jarvis.wav"
             try:
-                import sounddevice as sd
                 import numpy as np
                 with wave.open(archivo_temp, "wb") as f:
                     f.setnchannels(1)
@@ -288,12 +287,27 @@ class MotorVocal:
                     f.setframerate(self.modelo_piper.config.sample_rate)
                     self.modelo_piper.synthesize(texto_limpio, f)
                 
-                # Leer el WAV generado y reproducirlo en las bocinas físicas
-                with wave.open(archivo_temp, "rb") as w:
-                    frames = w.readframes(w.getnframes())
-                    audio_data = np.frombuffer(frames, dtype=np.int16)
-                    sd.play(audio_data, samplerate=w.getframerate(), device=self.dispositivo_salida)
-                    sd.wait()
+                # Intentar reproducir con sounddevice o aplay/paplay nativo
+                reproducido = False
+                try:
+                    import sounddevice as sd
+                    with wave.open(archivo_temp, "rb") as w:
+                        frames = w.readframes(w.getnframes())
+                        audio_data = np.frombuffer(frames, dtype=np.int16)
+                        sd.play(audio_data, samplerate=w.getframerate(), device=self.dispositivo_salida)
+                        sd.wait()
+                        reproducido = True
+                except Exception:
+                    reproducido = False
+
+                if not reproducido and os.name != 'nt':
+                    try:
+                        res = subprocess.run(["aplay", "-q", archivo_temp], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                        if res.returncode != 0:
+                            subprocess.run(["paplay", archivo_temp], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    except Exception:
+                        pass
+
             except Exception as e:
                 print(f"\n{Fore.RED}[Error de reproducción Piper: {e}]{Fore.RESET}")
             finally:
@@ -963,13 +977,15 @@ class CerebroJarvis:
             
         messages.append({"role": "user", "content": mensaje})
 
-        modelo_target = "qwen2.5:1.5b"
+        modelo_target = "llama3.2:1b"
         try:
             r_tags = requests.get("http://localhost:11434/api/tags", timeout=2)
             if r_tags.status_code == 200:
-                models_data = r_tags.json().get("models", [])
-                if models_data:
-                    modelo_target = models_data[0].get("name", modelo_target)
+                models_names = [m.get("name") for m in r_tags.json().get("models", [])]
+                if "llama3.2:1b" in models_names:
+                    modelo_target = "llama3.2:1b"
+                elif models_names:
+                    modelo_target = models_names[0]
         except Exception:
             pass
 
@@ -979,12 +995,12 @@ class CerebroJarvis:
             "stream": False,
             "options": {
                 "temperature": 0.7,
-                "num_predict": 200
+                "num_predict": 350
             }
         }
 
         try:
-            r = requests.post(url, json=payload, timeout=15)
+            r = requests.post(url, json=payload, timeout=45)
             if r.status_code == 200:
                 respuesta_raw = r.json().get("message", {}).get("content", "").replace("*", "").strip()
                 
