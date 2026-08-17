@@ -1001,7 +1001,7 @@ class CerebroJarvis:
             "stream": False,
             "options": {
                 "temperature": 0.7,
-                "num_predict": 450,
+                "num_predict": 1000000,
                 "num_thread": 4,
                 "num_ctx": 2048
             }
