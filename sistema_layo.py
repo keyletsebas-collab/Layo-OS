@@ -2,16 +2,24 @@ import speech_recognition as sr
 import requests
 import random
 import webbrowser
-import pyautogui 
 import time 
 import os
 import wave
-import winsound 
 import psutil 
 import sys
 import ctypes
 import subprocess
 from datetime import datetime
+
+try:
+    import pyautogui
+except Exception:
+    pyautogui = None
+
+try:
+    import winsound
+except Exception:
+    winsound = None
 
 # =====================================================================
 # CONFIGURACIÓN DE CONSOLA PREMIUM (ESTILO STARK INDUSTRIES)
@@ -320,8 +328,14 @@ class MotorVocal:
 # =====================================================================
 import numpy as np
 import json
-import torch
-import torch.nn as nn
+try:
+    import torch
+    import torch.nn as nn
+    TORCH_DISPONIBLE = True
+except Exception:
+    torch = None
+    nn = None
+    TORCH_DISPONIBLE = False
 
 class VectorizadorSimple:
     def __init__(self):
@@ -357,22 +371,26 @@ class VectorizadorSimple:
             with open(ruta, "r", encoding="utf-8") as f:
                 self.vocabulario = json.load(f)
 
-class ClasificadorIntencion(nn.Module):
-    def __init__(self, tamano_entrada, tamano_salida):
-        super(ClasificadorIntencion, self).__init__()
-        self.fc1 = nn.Linear(tamano_entrada, 64)
-        self.relu = nn.ReLU()
-        self.fc2 = nn.Linear(64, 32)
-        self.relu2 = nn.ReLU()
-        self.fc3 = nn.Linear(32, tamano_salida)
-        
-    def forward(self, x):
-        out = self.fc1(x)
-        out = self.relu(out)
-        out = self.fc2(out)
-        out = self.relu2(out)
-        out = self.fc3(out)
-        return out
+if TORCH_DISPONIBLE:
+    class ClasificadorIntencion(nn.Module):
+        def __init__(self, tamano_entrada, tamano_salida):
+            super(ClasificadorIntencion, self).__init__()
+            self.fc1 = nn.Linear(tamano_entrada, 64)
+            self.relu = nn.ReLU()
+            self.fc2 = nn.Linear(64, 32)
+            self.relu2 = nn.ReLU()
+            self.fc3 = nn.Linear(32, tamano_salida)
+            
+        def forward(self, x):
+            out = self.fc1(x)
+            out = self.relu(out)
+            out = self.fc2(out)
+            out = self.relu2(out)
+            out = self.fc3(out)
+            return out
+else:
+    class ClasificadorIntencion:
+        pass
 
 class MotorMLLayo:
     def __init__(self):
@@ -383,7 +401,8 @@ class MotorMLLayo:
         self.vectorizador = VectorizadorSimple()
         self.modelo = None
         self.activo = False
-        self.cargar_sistemas()
+        if TORCH_DISPONIBLE:
+            self.cargar_sistemas()
 
     def cargar_sistemas(self):
         ruta_vocab = "vocabulario_layo.json"
@@ -931,15 +950,19 @@ class CerebroJarvis:
         messages = [{"role": "system", "content": instruccion_actual}]
         
         for msg in self.historial[-10:]:
-            role = "user" if msg.get("role") == "user" else "assistant"
-            text = msg.get("content", "")
-            if "parts" in msg:
-                text = msg["parts"][0]["text"]
-            messages.append({"role": role, "content": text})
+            r_str = msg.get("role", "user")
+            role = "user" if r_str == "user" else "assistant"
+            text = ""
+            if isinstance(msg, dict):
+                if "content" in msg and isinstance(msg["content"], str):
+                    text = msg["content"]
+                elif "parts" in msg and isinstance(msg["parts"], list) and len(msg["parts"]) > 0:
+                    text = msg["parts"][0].get("text", "")
+            if text:
+                messages.append({"role": role, "content": text})
             
         messages.append({"role": "user", "content": mensaje})
 
-        # Buscar modelos disponibles en Ollama o usar qwen2.5:1.5b por defecto
         modelo_target = "qwen2.5:1.5b"
         try:
             r_tags = requests.get("http://localhost:11434/api/tags", timeout=2)
@@ -956,12 +979,12 @@ class CerebroJarvis:
             "stream": False,
             "options": {
                 "temperature": 0.7,
-                "num_predict": 180
+                "num_predict": 200
             }
         }
 
         try:
-            r = requests.post(url, json=payload, timeout=12)
+            r = requests.post(url, json=payload, timeout=15)
             if r.status_code == 200:
                 respuesta_raw = r.json().get("message", {}).get("content", "").replace("*", "").strip()
                 
@@ -990,7 +1013,7 @@ class CerebroJarvis:
 
                 return texto_limpio, accion_detectada
         except Exception as e:
-            pass
+            print(f"[Ollama LLM Error]: {e}")
         return None, None
 
     def pensar(self, mensaje):

@@ -3,16 +3,43 @@ import socketserver
 import json
 import os
 import requests
+import threading
+import time
+import webbrowser
 from urllib.parse import parse_qs, urlparse
 from agente_aprendizaje import AgenteAprendizaje
 
 PORT = 5000
 
+# Inicialización diferida del cerebro y motor de voz de Layo
+cerebro_global = None
+voz_global = None
+
+def obtener_cerebro():
+    global cerebro_global
+    if cerebro_global is None:
+        try:
+            from sistema_layo import CerebroJarvis
+            cerebro_global = CerebroJarvis()
+        except Exception as e:
+            print(f"[GUI Cerebro Init Error]: {e}")
+    return cerebro_global
+
+def obtener_voz():
+    global voz_global
+    if voz_global is None:
+        try:
+            from sistema_layo import MotorVocal
+            voz_global = MotorVocal()
+        except Exception as e:
+            print(f"[GUI Voz Init Error]: {e}")
+    return voz_global
+
+
 class LayoGUIHandler(http.server.BaseHTTPRequestHandler):
     agente = AgenteAprendizaje()
 
     def log_message(self, format, *args):
-        # Silenciar logs ruidosos en la consola principal
         pass
 
     def do_GET(self):
@@ -33,7 +60,6 @@ class LayoGUIHandler(http.server.BaseHTTPRequestHandler):
             self.send_header("Content-Type", "application/json")
             self.end_headers()
             
-            # Verificar si Ollama está respondiendo
             ollama_activo = False
             modelos_ollama = []
             try:
@@ -45,7 +71,6 @@ class LayoGUIHandler(http.server.BaseHTTPRequestHandler):
             except Exception:
                 ollama_activo = False
 
-            # Buscar voces ONNX
             voces_onnx = [f for f in os.listdir(".") if f.endswith(".onnx")]
             if os.path.exists("Voz"):
                 for root, _, files in os.walk("Voz"):
@@ -89,19 +114,31 @@ class LayoGUIHandler(http.server.BaseHTTPRequestHandler):
 
         if parsed.path == "/api/chat":
             mensaje = data.get("mensaje", "")
-            respuesta_texto = f"Mensaje recibido: '{mensaje}'. (Procesado por Ollama Local)"
+            cerebro = obtener_cerebro()
+            voz = obtener_voz()
             
-            # Enviar a Ollama directamente si está activo
-            try:
-                r = requests.post("http://localhost:11434/api/generate", json={
-                    "model": "qwen2.5:1.5b",
-                    "prompt": f"Eres Layo, una IA leal estilo JARVIS. Responde al Señor brevemente: {mensaje}",
-                    "stream": False
-                }, timeout=10)
-                if r.status_code == 200:
-                    respuesta_texto = r.json().get("response", respuesta_texto)
-            except Exception as e:
-                respuesta_texto = f"Señor, Ollama aún no está activo en segundo plano. Ejecute 'ollama serve' para activar el cerebro offline."
+            respuesta_texto = "Señor, estoy procesando su solicitud..."
+            accion = None
+            
+            if cerebro:
+                res_ai, acc_ai = cerebro.pensar(mensaje)
+                if res_ai:
+                    respuesta_texto = res_ai
+                    accion = acc_ai
+
+            # Si hay una acción de sistema solicitada por la IA
+            if accion:
+                try:
+                    from sistema_layo import ejecutar_comando_sistema, escuchar
+                    res_cmd = ejecutar_comando_sistema(accion, voz, escuchar, cerebro=cerebro)
+                    if res_cmd:
+                        respuesta_texto += f" {res_cmd}"
+                except Exception as e:
+                    print(f"[GUI Action Error]: {e}")
+
+            # Hacer que Layo hable la respuesta por los altavoces en un hilo separado
+            if voz and respuesta_texto:
+                threading.Thread(target=lambda: voz.hablar(respuesta_texto), daemon=True).start()
 
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
@@ -109,12 +146,9 @@ class LayoGUIHandler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(json.dumps({"respuesta": respuesta_texto}).encode("utf-8"))
 
         elif parsed.path == "/api/test_voice":
-            try:
-                from sistema_layo import MotorVocal
-                v = MotorVocal()
-                v.hablar("Señor. Motor vocal Piper ONNX verificado y funcionando sin conexión.")
-            except Exception as e:
-                print(f"[GUI Test Voice Error]: {e}")
+            voz = obtener_voz()
+            if voz:
+                threading.Thread(target=lambda: voz.hablar("Señor. Motor vocal Piper ONNX verificado y funcionando sin conexión."), daemon=True).start()
 
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
@@ -125,7 +159,21 @@ class LayoGUIHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
 
 def iniciar_servidor_gui():
-    print(f"\n[GUI Web] Iniciando Interfaz Gráfica de Layo en http://localhost:{PORT}")
+    url_gui = f"http://localhost:{PORT}"
+    print(f"\n==========================================================================")
+    print(f"  [GUI Web] ABRIENDO INTERFAZ GRÁFICA EN EL NAVEGADOR: {url_gui}")
+    print(f"==========================================================================")
+    
+    def abrir_navegador():
+        time.sleep(1)
+        try:
+            webbrowser.open(url_gui)
+        except Exception:
+            pass
+
+    threading.Thread(target=abrir_navegador, daemon=True).start()
+
+    socketserver.TCPServer.allow_reuse_address = True
     with socketserver.TCPServer(("", PORT), LayoGUIHandler) as httpd:
         try:
             httpd.serve_forever()
