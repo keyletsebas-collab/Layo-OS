@@ -139,7 +139,7 @@ class LayoGUIHandler(http.server.BaseHTTPRequestHandler):
                     accion = mensaje
                 elif "carpeta" in msg_lc and any(k in msg_lc for k in ["abre", "abrir"]):
                     accion = mensaje
-                elif "youtube" in msg_lc and any(k in msg_lc for k in ["abre", "abrir", "lanza", "ir", "pon"]):
+                elif any(s in msg_lc for s in ["instagram", "facebook", "twitter", "github", "twitch", "reddit", "whatsapp", "chatgpt", "gmail", "outlook", "google", "youtube", ".com", ".org", ".net", "http"]) and any(k in msg_lc for k in ["abre", "abrir", "lanza", "ir", "pon"]):
                     accion = mensaje
                 elif any(k in msg_lc for k in ["mueve ", "mover ", "traslada "]):
                     accion = mensaje

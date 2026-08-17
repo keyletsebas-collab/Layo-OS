@@ -1265,16 +1265,40 @@ def ejecutar_comando_sistema(comando, motor_voz, escuchar_func, cerebro=None):
     cmd = comando.strip()
     cmd_lc = cmd.lower()
 
-    # --- ABRIR YOUTUBE O NAVEGADOR WEB DIRECTAMENTE ---
-    if "youtube" in cmd_lc and any(k in cmd_lc for k in ["abre", "abrir", "lanza", "lanzar", "ir", "pon", "poner"]):
-        import webbrowser
-        webbrowser.open("https://www.youtube.com")
-        return "Señor, he abierto YouTube en su navegador predeterminado."
+    # --- ABRIR REDES SOCIALES Y SITIOS WEB EN EL NAVEGADOR ---
+    sitios_populares = {
+        "instagram": "https://www.instagram.com",
+        "facebook": "https://www.facebook.com",
+        "twitter": "https://x.com",
+        "x": "https://x.com",
+        "github": "https://www.github.com",
+        "twitch": "https://www.twitch.tv",
+        "reddit": "https://www.reddit.com",
+        "whatsapp": "https://web.whatsapp.com",
+        "chatgpt": "https://chatgpt.com",
+        "gmail": "https://mail.google.com",
+        "outlook": "https://outlook.live.com",
+        "google": "https://www.google.com",
+        "youtube": "https://www.youtube.com"
+    }
 
-    if any(k in cmd_lc for k in ["abre google", "abrir google", "abre el navegador", "abrir navegador"]):
+    for sitio, url_sitio in sitios_populares.items():
+        if sitio in cmd_lc and any(k in cmd_lc for k in ["abre", "abrir", "lanza", "lanzar", "ir", "pon", "poner"]):
+            import webbrowser
+            webbrowser.open(url_sitio)
+            return f"Señor, he abierto {sitio.capitalize()} en su navegador predeterminado."
+
+    if ("http://" in cmd_lc or "https://" in cmd_lc or ".com" in cmd_lc or ".org" in cmd_lc or ".net" in cmd_lc) and any(k in cmd_lc for k in ["abre", "abrir", "lanza", "ir"]):
         import webbrowser
-        webbrowser.open("https://www.google.com")
-        return "Señor, he abierto el navegador predeterminado para usted."
+        url_dest = cmd_lc
+        for p in ["abre la página de ", "abre la página ", "abre la web de ", "abre la web ", "abre el sitio de ", "abre ", "abrir ", "lanza ", "ir a "]:
+            if url_dest.startswith(p):
+                url_dest = url_dest[len(p):].strip()
+                break
+        if not url_dest.startswith("http"):
+            url_dest = "https://" + url_dest
+        webbrowser.open(url_dest)
+        return f"Señor, he abierto el sitio web '{url_dest}' en su navegador."
 
     # --- CERRAR CARPETAS / VENTANAS DEL EXPLORADOR ---
     if "carpeta" in cmd_lc and any(k in cmd_lc for k in ["cierra", "cerrar"]):
