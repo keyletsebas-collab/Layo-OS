@@ -680,6 +680,8 @@ class CerebroJarvis:
             "escribir código en VS Code, escribir texto en pantalla, tomar capturas de pantalla, apagar o reiniciar el sistema), "
             "DEBES obligatoriamente incorporar la etiqueta [ACTION: comando] al final de tu respuesta (acompañando a la de emoción).\n"
             "Formatos de comandos admitidos por la consola central:\n"
+            "- Ejecutar comandos de consola/terminal: [ACTION: terminal comando_bash]\n"
+            "- Leer y examinar archivos de la máquina: [ACTION: lee ruta_del_archivo]\n"
             "- Abrir carpetas/archivos locales: [ACTION: abre nombre_del_archivo_o_carpeta]\n"
             "- Lanzar aplicaciones instaladas: [ACTION: abre nombre_de_aplicacion]\n"
             "- Reproducir en Spotify: [ACTION: reproduce cancion_o_artista en spotify]\n"
@@ -1232,8 +1234,42 @@ def buscar_archivo_o_carpeta_sistema(nombre_objetivo):
 # 3. INTERFAZ DE CONTROL FÍSICO DEL SISTEMA (MANOS)
 # =====================================================================
 def ejecutar_comando_sistema(comando, motor_voz, escuchar_func, cerebro=None):
-    cmd = comando.lower().strip()
+    cmd = comando.strip()
+    cmd_lc = cmd.lower()
 
+    # --- ACCESO DIRECTO A CONSOLA / TERMINAL DE LA MÁQUINA ---
+    if cmd_lc.startswith("terminal ") or cmd_lc.startswith("ejecuta ") or cmd_lc.startswith("comando "):
+        comando_terminal = cmd[cmd.find(" "):].strip()
+        try:
+            res = subprocess.run(comando_terminal, shell=True, capture_output=True, text=True, timeout=30)
+            salida = res.stdout.strip() or res.stderr.strip()
+            if not salida:
+                salida = "Comando ejecutado con éxito."
+            salida_resumida = salida[:350] + "..." if len(salida) > 350 else salida
+            return f"Señor, he ejecutado en la consola: '{comando_terminal}'. Respuesta: {salida_resumida}"
+        except Exception as e_cmd:
+            try:
+                from agente_aprendizaje import AgenteAprendizaje
+                agente = AgenteAprendizaje()
+                agente.registrar_error_y_aprender("Ejecución Terminal", comando_terminal, str(e_cmd), cerebro)
+            except Exception:
+                pass
+            return f"Señor, la consola reportó un contratiempo: {e_cmd}"
+
+    # --- LECTURA Y EXAMINACIÓN DE ARCHIVOS DE LA MÁQUINA ---
+    if cmd_lc.startswith("lee ") or cmd_lc.startswith("leer archivo "):
+        ruta_f = cmd[cmd.find(" "):].strip()
+        if os.path.exists(ruta_f):
+            try:
+                with open(ruta_f, "r", encoding="utf-8", errors="ignore") as f:
+                    contenido = f.read(800)
+                return f"Señor, contenido del archivo '{os.path.basename(ruta_f)}': {contenido[:250]}"
+            except Exception as e_f:
+                return f"Señor, impedimento para leer el archivo: {e_f}"
+        else:
+            return f"Señor, no se localizó el archivo '{ruta_f}' en la máquina."
+
+    cmd = cmd_lc
     # Mapeo de equivalencias fonéticas de nombres en inglés transcritos a español
     equivalentes_foneticos = {
         # Carpetas
