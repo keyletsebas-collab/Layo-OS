@@ -1265,6 +1265,17 @@ def ejecutar_comando_sistema(comando, motor_voz, escuchar_func, cerebro=None):
     cmd = comando.strip()
     cmd_lc = cmd.lower()
 
+    # --- ABRIR YOUTUBE O NAVEGADOR WEB DIRECTAMENTE ---
+    if "youtube" in cmd_lc and any(k in cmd_lc for k in ["abre", "abrir", "lanza", "lanzar", "ir", "pon", "poner"]):
+        import webbrowser
+        webbrowser.open("https://www.youtube.com")
+        return "Señor, he abierto YouTube en su navegador predeterminado."
+
+    if any(k in cmd_lc for k in ["abre google", "abrir google", "abre el navegador", "abrir navegador"]):
+        import webbrowser
+        webbrowser.open("https://www.google.com")
+        return "Señor, he abierto el navegador predeterminado para usted."
+
     # --- CERRAR CARPETAS / VENTANAS DEL EXPLORADOR ---
     if "carpeta" in cmd_lc and any(k in cmd_lc for k in ["cierra", "cerrar"]):
         nom_c = cmd_lc

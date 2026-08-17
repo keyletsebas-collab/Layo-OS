@@ -139,6 +139,8 @@ class LayoGUIHandler(http.server.BaseHTTPRequestHandler):
                     accion = mensaje
                 elif "carpeta" in msg_lc and any(k in msg_lc for k in ["abre", "abrir"]):
                     accion = mensaje
+                elif "youtube" in msg_lc and any(k in msg_lc for k in ["abre", "abrir", "lanza", "ir", "pon"]):
+                    accion = mensaje
                 elif any(k in msg_lc for k in ["mueve ", "mover ", "traslada "]):
                     accion = mensaje
                 elif any(k in msg_lc for k in ["ejecuta ", "terminal ", "comando "]):
@@ -148,15 +150,17 @@ class LayoGUIHandler(http.server.BaseHTTPRequestHandler):
             frases_inconformidad = [
                 "inconforme", "estoy inconforme", "eso estuvo mal", "te equivocaste", 
                 "eso no sirvio", "eso no funciono", "respuesta incorrecta", "no me gusta esa respuesta",
-                "eso no fue lo que te pedi", "fallaste", "error en tu respuesta"
+                "eso no fue lo que te pedi", "fallaste", "error en tu respuesta", "cometiendo un error", "no estas abriendo"
             ]
             if any(f in mensaje.lower() for f in frases_inconformidad):
                 peticion_previa = "Petición previa del Señor"
                 if cerebro and hasattr(cerebro, "historial") and len(cerebro.historial) >= 2:
                     for item in reversed(cerebro.historial[:-1]):
                         if isinstance(item, dict) and item.get("role") == "user":
-                            peticion_previa = item.get("content", peticion_previa)
-                            break
+                            u_txt = item.get("content", "").strip()
+                            if not any(f in u_txt.lower() for f in frases_inconformidad):
+                                peticion_previa = u_txt
+                                break
 
                 self.agente.registrar_error_y_aprender(
                     "Inconformidad de Usuario",
@@ -175,6 +179,11 @@ class LayoGUIHandler(http.server.BaseHTTPRequestHandler):
                         respuesta_texto += f" {res_cmd}"
                 except Exception as e:
                     print(f"[GUI Action Error]: {e}")
+
+            # Limpiar etiquetas crudas [COMANDO:...], [MEMORY:...], [ACTION:...], etc.
+            import re
+            respuesta_texto = re.sub(r'\[(MEMORY|ACTION|COMANDO|EMOTION|RECORD|Comando corregido|Accion AI):[^\]]+\]', '', respuesta_texto, flags=re.IGNORECASE).strip()
+            respuesta_texto = re.sub(r'\[[^\]]+\]', '', respuesta_texto).strip()
 
             # Hacer que Layo hable la respuesta por los altavoces en un hilo separado
             if voz and respuesta_texto:
