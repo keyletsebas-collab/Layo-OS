@@ -149,6 +149,27 @@ class AgenteAprendizaje:
                 "exitos": r[6]
             } for r in rows]
 
+    def registrar_partida_juego(self, juego, movimiento_jugador, respuesta_layo, evaluacion_posicion=""):
+        """Guarda jugadas de ajedrez o juegos de mesa para análisis de estrategia"""
+        fecha = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        with self.obtener_conexion() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS registro_juegos (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    juego TEXT NOT NULL,
+                    movimiento_jugador TEXT NOT NULL,
+                    respuesta_layo TEXT NOT NULL,
+                    evaluacion TEXT,
+                    fecha TEXT NOT NULL
+                )
+            ''')
+            cursor.execute('''
+                INSERT INTO registro_juegos (juego, movimiento_jugador, respuesta_layo, evaluacion, fecha)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (juego, movimiento_jugador, respuesta_layo, evaluacion_posicion, fecha))
+            conn.commit()
+
     def obtener_estadisticas_aprendizaje(self):
         with self.obtener_conexion() as conn:
             cursor = conn.cursor()

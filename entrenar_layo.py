@@ -256,6 +256,17 @@ def generar_dataset():
     for v in VERBOS_VISION:
         for o in OBJETIVOS_VISION:
             datos_base.append((f"{v} {o}".strip(), 10))
+
+    # 11: ajedrez_y_juegos_de_mesa
+    FRASES_AJEDREZ_Y_JUEGOS = [
+        "juguemos ajedrez", "vamos a jugar ajedrez", "muve el peón a e4", "muevo caballo a f3", "jaque mate", "jaque al rey", 
+        "analiza este tablero de ajedrez", "cuál es la mejor jugada de ajedrez", "apertura española en ajedrez", "defensa siciliana",
+        "juguemos damas", "juguemos tres en raya", "juguemos tic tac toe", "juego de mesa", "reglas del ajedrez", "enroque corto",
+        "enroque largo", "peón al paso", "tablero de ajedrez", "captura la reina", "coronación de peón", "estrategia de ajedrez",
+        "juega conmigo ajedrez", "cuál es tu siguiente movimiento en ajedrez", "haz tu jugada", "resuelve este dilema de ajedrez"
+    ]
+    for f in FRASES_AJEDREZ_Y_JUEGOS:
+        datos_base.append((f, 11))
  
     # Mezcladores combinatorios gigantescos para escalar a más de 1,000,000 de escenarios únicos
     saludos = ["hola", "buenas", "buenos días", "buenas noches", "oye", "escucha", "hey", "estimado layo", "querido jarvis", "computadora", "layo", "jarvis"]
@@ -349,7 +360,7 @@ def entrenar_modelo():
     
     # 3. Inicializar Red Neuronal Profunda
     print(f"\n{Fore.CYAN}[3/5] Inicializando capas lineales de la Red Neuronal PyTorch (MLP 64-32)...{Fore.RESET}")
-    tamano_salida = 11 # 11 intenciones
+    tamano_salida = len(set(etiquetas)) # Intenciones dinámicas (incluye Ajedrez y Juegos)
     modelo = ClasificadorIntencion(tamano_vocab, tamano_salida)
     
     criterio = nn.CrossEntropyLoss()
@@ -357,18 +368,17 @@ def entrenar_modelo():
     
     # Bucle de aprendizaje autónomo optimizado con Mini-Batches (1,000,000+ muestras)
     print(f"\n{Fore.CYAN}[4/5] Invocando optimizador de descenso de gradiente (Adam)...{Fore.RESET}")
-    print(f"{Fore.WHITE}Entrenando en mini-lotes (batch size: 8192) para alto rendimiento.{Fore.RESET}")
+    print(f"{Fore.WHITE}Entrenando en mini-lotes (batch size: 2048) para alto rendimiento.{Fore.RESET}")
     
     from torch.utils.data import DataLoader, TensorDataset
     dataset_train = TensorDataset(X_train, y_train)
-    loader_train = DataLoader(dataset_train, batch_size=8192, shuffle=True)
-    
-    epochs = 15
-    t_inicio = time.time()
+    loader_train = DataLoader(dataset_train, batch_size=2048, shuffle=True)
     
     try:
+        epochs = 15
+        t_inicio = time.time()
         mejor_val_acc = 0.0
-        
+    
         for epoch in range(1, epochs + 1):
             modelo.train()
             epoch_loss = 0.0
@@ -391,13 +401,11 @@ def entrenar_modelo():
                 _, predichos = torch.max(val_outputs, dim=1)
                 val_acc = (predichos == y_val).sum().item() / len(y_val)
                 
-                # Guardar si es el mejor modelo
                 if val_acc > mejor_val_acc:
                     mejor_val_acc = val_acc
                     torch.save(modelo.state_dict(), "modelo_layo.pth")
                     vectorizador.guardar("vocabulario_layo.json")
             
-            # Barra de progreso Stark visual en consola
             ancho_barra = 20
             progreso = int((epoch / epochs) * ancho_barra)
             barra = f"[{'=' * progreso}{' ' * (ancho_barra - progreso)}]"
@@ -422,7 +430,7 @@ def entrenar_modelo():
         
         clases_ejemplo = [
             "abrir_carpeta", "abrir_app", "reproducir_media", "volumen", "captura", 
-            "escribir_codigo", "conversacion", "control_ventanas", "gestion_notas", "busqueda_web", "analizar_pantalla"
+            "escribir_codigo", "conversacion", "control_ventanas", "gestion_notas", "busqueda_web", "analizar_pantalla", "ajedrez_y_juegos"
         ]
         ciclo = 1
         
@@ -482,7 +490,7 @@ def entrenar_modelo():
                 # C. Entrenar el modelo focalizando específicamente los fallos (Active Learning)
                 print(f"{Fore.BLUE}[Entrenador] Ejecutando mini-bach de retropropagación focalizado...{Fore.RESET}")
                 modelo.train()
-                
+                    
                 X_fallos = torch.tensor(np.array([vectorizador.transform(f[0]) for f in fallos]), dtype=torch.float32)
                 y_fallos = torch.tensor(np.array([f[1] for f in fallos]), dtype=torch.long)
                 

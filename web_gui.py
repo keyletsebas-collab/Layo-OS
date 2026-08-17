@@ -200,6 +200,13 @@ class LayoGUIHandler(http.server.BaseHTTPRequestHandler):
                     respuesta_texto = "Con gusto, Señor. Procedo con su solicitud de inmediato."
                     break
 
+            # Detección y registro de jugadas de Ajedrez / Juegos de Mesa en SQLite
+            if any(k in mensaje.lower() for k in ["ajedrez", "jaque", "peón", "peon", "caballo", "torre", "alfil", "reina", "rey", "enroque", "juego de mesa", "damas", "tres en raya"]):
+                try:
+                    self.agente.registrar_partida_juego("Ajedrez/Juegos", mensaje, respuesta_texto, "Jugada Analizada y Evaluada")
+                except Exception as e_juego:
+                    print(f"[GUI Game Learning Log Error]: {e_juego}")
+
             # Hacer que Layo hable la respuesta por los altavoces en un hilo separado
             if voz and respuesta_texto:
                 threading.Thread(target=lambda: voz.hablar(respuesta_texto), daemon=True).start()
