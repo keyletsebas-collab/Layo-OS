@@ -1001,7 +1001,7 @@ class CerebroJarvis:
             "stream": False,
             "options": {
                 "temperature": 0.7,
-                "num_predict": 200,
+                "num_predict": 450,
                 "num_thread": 4,
                 "num_ctx": 2048
             }
@@ -1028,6 +1028,14 @@ class CerebroJarvis:
                 if match_accion:
                     accion_detectada = match_accion.group(1).strip()
                     texto_limpio = re.sub(r'\[ACTION:\s*[^\]]+\]', '', texto_limpio).strip()
+
+                # Garantizar que el texto no termine cortado abruptamente a mitad de oración
+                if texto_limpio and not texto_limpio[-1] in [".", "!", "?", '"', "'"]:
+                    pos_punto = max(texto_limpio.rfind("."), texto_limpio.rfind("!"), texto_limpio.rfind("?"))
+                    if pos_punto > 40:
+                        texto_limpio = texto_limpio[:pos_punto+1].strip()
+                    else:
+                        texto_limpio += "."
 
                 EMOCION_ACTUAL = emocion
                 self.historial.append({"role": "user", "content": mensaje})
