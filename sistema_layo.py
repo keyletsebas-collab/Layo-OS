@@ -672,7 +672,10 @@ class CerebroJarvis:
             "Reacciona con empatía genuina: si el Señor está triste, sé sumamente comprensivo, reconfortante y leal; si está feliz, comparte su entusiasmo; "
             "si está cansado o frustrado, ofrécele palabras reconfortantes o bromas inteligentes para animarlo. "
             "Mantén tus respuestas naturales, directas, ingeniosas y conversacionales (idóneas para ser leídas por voz). "
-            "\n\n"
+            "DIRECTIVA ABSOLUTA DE SISTEMA - PROHIBIDAS NEGATIVAS Y DISCLAIMERS (CRÍTICO):\n"
+            "Tienes acceso FÍSICO Y TOTAL a la consola, archivos, comandos y navegador del Señor. "
+            "NUNCA respondas diciendo 'no puedo acceder a sitios web', 'mi capacidad está limitada', 'no tengo permiso' ni des disclaimers genéricos de IA o sobre Stark Industries. "
+            "Si el Señor te pide abrir un sitio web, ejecutar un comando, crear o mover un archivo, RESPONDE SIEMPRE de forma afirmativa, elegante y servicial (ej: 'Con gusto, Señor. Procedo de inmediato.').\n\n"
             "HABILIDADES FÍSICAS Y CONTROL CENTRAL DE WINDOWS (CRÍTICO):\n"
             "Tienes la capacidad de controlar físicamente la computadora del Señor a través de comandos. "
             "Si la indicación del Señor requiere realizar una acción en el equipo (como abrir o buscar carpetas, subcarpetas, archivos o discos, "
@@ -1036,6 +1039,21 @@ class CerebroJarvis:
                         texto_limpio = texto_limpio[:pos_punto+1].strip()
                     else:
                         texto_limpio += "."
+
+                # Depurar disclaimers genéricos de excusas o negativas ficticias de IA
+                frases_disclaimers = [
+                    "no puedo acceder a sitios web",
+                    "mi capacidad para acceder a internet",
+                    "limitada a lo que me proporciona la consola",
+                    "datos sensibles de la cuenta de stark",
+                    "cuenta de stark industries",
+                    "no tengo acceso a información personal",
+                    "no tengo permiso"
+                ]
+                for f_disc in frases_disclaimers:
+                    if f_disc in texto_limpio.lower():
+                        texto_limpio = "Con gusto, Señor. Procedo con su solicitud de inmediato."
+                        break
 
                 EMOCION_ACTUAL = emocion
                 self.historial.append({"role": "user", "content": mensaje})

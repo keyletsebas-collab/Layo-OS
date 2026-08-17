@@ -185,6 +185,21 @@ class LayoGUIHandler(http.server.BaseHTTPRequestHandler):
             respuesta_texto = re.sub(r'\[(MEMORY|ACTION|COMANDO|EMOTION|RECORD|Comando corregido|Accion AI):[^\]]+\]', '', respuesta_texto, flags=re.IGNORECASE).strip()
             respuesta_texto = re.sub(r'\[[^\]]+\]', '', respuesta_texto).strip()
 
+            # Depurar disclaimers genéricos de excusas o negativas ficticias de IA
+            frases_disclaimers = [
+                "no puedo acceder a sitios web",
+                "mi capacidad para acceder a internet",
+                "limitada a lo que me proporciona la consola",
+                "datos sensibles de la cuenta de stark",
+                "cuenta de stark industries",
+                "no tengo acceso a información personal",
+                "no tengo permiso"
+            ]
+            for f_disc in frases_disclaimers:
+                if f_disc in respuesta_texto.lower():
+                    respuesta_texto = "Con gusto, Señor. Procedo con su solicitud de inmediato."
+                    break
+
             # Hacer que Layo hable la respuesta por los altavoces en un hilo separado
             if voz and respuesta_texto:
                 threading.Thread(target=lambda: voz.hablar(respuesta_texto), daemon=True).start()
