@@ -1142,53 +1142,52 @@ def buscar_app_sistema(nombre_app):
             
     return None, None, False
 
+def abrir_ruta_sistema(ruta):
+    try:
+        if os.name == 'nt':
+            os.startfile(ruta)
+        else:
+            subprocess.Popen(["xdg-open", ruta], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return True
+    except Exception:
+        return False
+
 def buscar_archivo_o_carpeta_sistema(nombre_objetivo):
     nombre_normalizado = nombre_objetivo.lower().strip()
     
-    # Directorios base para buscar archivos y carpetas del usuario
     carpetas_busqueda = [
-        # Escritorio del usuario (OneDrive o Local)
         os.path.join(os.path.expanduser("~"), "OneDrive", "Desktop"),
         os.path.join(os.path.expanduser("~"), "Desktop"),
-        # Carpetas de usuario comunes
         os.path.join(os.path.expanduser("~"), "Downloads"),
         os.path.join(os.path.expanduser("~"), "Documents"),
         os.path.join(os.path.expanduser("~"), "Pictures"),
         os.path.join(os.path.expanduser("~"), "Music"),
         os.path.join(os.path.expanduser("~"), "Videos"),
-        # Directorio de trabajo actual (Workspace)
         os.getcwd()
     ]
     
-    # Eliminar duplicados manteniendo el orden y confirmar existencia
     carpetas_busqueda = list(dict.fromkeys(c for c in carpetas_busqueda if os.path.exists(c)))
     
-    # Carpetas que queremos ignorar por completo
     ignorar_directorios = {
         "node_modules", ".git", "__pycache__", "appdata", "local settings", 
         "cookies", "cache", "temp", "system32", "windows", "program files", 
         "program files (x86)", "$recycle.bin"
     }
 
-    # Búsqueda por niveles (BFS) utilizando os.scandir para velocidad extrema (hasta 10x más rápido que os.walk)
-    # Cola de carpetas a procesar estructurada por nivel: (ruta_carpeta, nivel_actual)
     cola = [(c, 0) for c in carpetas_busqueda]
     
     while cola:
         ruta_actual, nivel = cola.pop(0)
         
-        # Limitar profundidad máxima a 3 niveles para mantener latencia ultra baja
         if nivel > 3:
             continue
             
         try:
-            # os.scandir es inmensamente más veloz porque cachea los metadatos de archivos en Windows
             with os.scandir(ruta_actual) as entradas:
                 subcarpetas = []
                 for entrada in entradas:
                     nombre_entrada_lc = entrada.name.lower()
                     
-                    # Ignorar archivos/carpetas ocultas o del sistema
                     if entrada.name.startswith('.') or entrada.name.startswith('~$'):
                         continue
                         
@@ -1196,32 +1195,22 @@ def buscar_archivo_o_carpeta_sistema(nombre_objetivo):
                         if nombre_entrada_lc in ignorar_directorios:
                             continue
                         
-                        # Comprobar coincidencia exacta o parcial en carpetas
                         if nombre_normalizado == nombre_entrada_lc or nombre_normalizado in nombre_entrada_lc:
                             ruta_completa = entrada.path
-                            try:
-                                os.startfile(ruta_completa)
+                            if abrir_ruta_sistema(ruta_completa):
                                 return entrada.name, "carpeta", True
-                            except Exception:
-                                pass
                         
-                        # Agregar a la lista para procesar en el siguiente nivel de profundidad
                         subcarpetas.append((entrada.path, nivel + 1))
                         
                     elif entrada.is_file():
                         item_nombre, ext = os.path.splitext(entrada.name)
                         item_nombre_lc = item_nombre.lower()
                         
-                        # Comprobar coincidencia en archivos
                         if nombre_normalizado == item_nombre_lc or nombre_normalizado in item_nombre_lc:
                             ruta_completa = entrada.path
-                            try:
-                                os.startfile(ruta_completa)
+                            if abrir_ruta_sistema(ruta_completa):
                                 return entrada.name, "archivo", True
-                            except Exception:
-                                pass
                                 
-                # Agregar subcarpetas de este directorio al final de la cola para BFS
                 cola.extend(subcarpetas)
                 
         except Exception:
