@@ -680,6 +680,7 @@ class CerebroJarvis:
             "escribir código en VS Code, escribir texto en pantalla, tomar capturas de pantalla, apagar o reiniciar el sistema), "
             "DEBES obligatoriamente incorporar la etiqueta [ACTION: comando] al final de tu respuesta (acompañando a la de emoción).\n"
             "Formatos de comandos admitidos por la consola central:\n"
+            "- Crear carpetas físicas: [ACTION: crea una carpeta llamada nombre_carpeta]\n"
             "- Ejecutar comandos de consola/terminal: [ACTION: terminal comando_bash]\n"
             "- Leer y examinar archivos de la máquina: [ACTION: lee ruta_del_archivo]\n"
             "- Abrir carpetas/archivos locales: [ACTION: abre nombre_del_archivo_o_carpeta]\n"
@@ -1258,6 +1259,38 @@ def buscar_archivo_o_carpeta_sistema(nombre_objetivo):
 def ejecutar_comando_sistema(comando, motor_voz, escuchar_func, cerebro=None):
     cmd = comando.strip()
     cmd_lc = cmd.lower()
+
+    # --- CREACIÓN FÍSICA DE CARPETAS / DIRECTORIOS EN EL DISCO ---
+    if "carpeta" in cmd_lc and any(k in cmd_lc for k in ["crea", "crear", "haz", "hacer", "nueva", "genera", "generar"]):
+        nombre_c = cmd_lc
+        limpiezas = [
+            "crea en mi escritorio una carpeta llamada", "crea en el escritorio una carpeta llamada",
+            "crea una carpeta en mi escritorio llamada", "crea una carpeta en el escritorio llamada",
+            "crea una carpeta llamada", "crea la carpeta llamada", "crear carpeta llamada", "crea carpeta llamada", 
+            "nueva carpeta llamada", "crea en mi escritorio una carpeta", "crea en el escritorio una carpeta",
+            "crea una carpeta", "crea la carpeta", "crear carpeta", "crea carpeta", "nueva carpeta",
+            "en mi escritorio", "en el escritorio", "llamada", "crea", "crear", "haz", "hacer", "genera", "generar", "carpeta"
+        ]
+        for l in limpiezas:
+            nombre_c = nombre_c.replace(l, "")
+        
+        nombre_c = nombre_c.strip()
+        if not nombre_c:
+            nombre_c = "Nueva_Carpeta"
+
+        escritorio_dir = os.path.join(os.path.expanduser("~"), "Desktop")
+        if not os.path.exists(escritorio_dir):
+            escritorio_dir = os.path.join(os.path.expanduser("~"), "OneDrive", "Desktop")
+        if not os.path.exists(escritorio_dir):
+            escritorio_dir = os.path.expanduser("~")
+
+        ruta_final = os.path.join(escritorio_dir, nombre_c)
+        try:
+            os.makedirs(ruta_final, exist_ok=True)
+            abrir_ruta_sistema(ruta_final)
+            return f"Señor, he creado exitosamente la carpeta '{nombre_c}' en su escritorio y la he abierto para usted."
+        except Exception as e_mk:
+            return f"Señor, ocurrió una dificultad al crear la carpeta '{nombre_c}': {e_mk}"
 
     # --- ACCESO DIRECTO A CONSOLA / TERMINAL DE LA MÁQUINA ---
     if cmd_lc.startswith("terminal ") or cmd_lc.startswith("ejecuta ") or cmd_lc.startswith("comando "):
