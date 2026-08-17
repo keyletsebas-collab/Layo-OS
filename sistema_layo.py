@@ -681,6 +681,7 @@ class CerebroJarvis:
             "DEBES obligatoriamente incorporar la etiqueta [ACTION: comando] al final de tu respuesta (acompañando a la de emoción).\n"
             "Formatos de comandos admitidos por la consola central:\n"
             "- Crear carpetas físicas: [ACTION: crea una carpeta llamada nombre_carpeta]\n"
+            "- Mover archivos o carpetas: [ACTION: mueve el archivo nombre_origen a carpeta_destino]\n"
             "- Ejecutar comandos de consola/terminal: [ACTION: terminal comando_bash]\n"
             "- Leer y examinar archivos de la máquina: [ACTION: lee ruta_del_archivo]\n"
             "- Abrir carpetas/archivos locales: [ACTION: abre nombre_del_archivo_o_carpeta]\n"
@@ -1291,6 +1292,61 @@ def ejecutar_comando_sistema(comando, motor_voz, escuchar_func, cerebro=None):
             return f"Señor, he creado exitosamente la carpeta '{nombre_c}' en su escritorio y la he abierto para usted."
         except Exception as e_mk:
             return f"Señor, ocurrió una dificultad al crear la carpeta '{nombre_c}': {e_mk}"
+
+    # --- MOVER O TRASLADAR ARCHIVOS Y CARPETAS ---
+    if any(k in cmd_lc for k in ["mueve ", "mover ", "traslada ", "trasladar "]):
+        import shutil
+        partes = cmd_lc
+        for p in ["mueve el archivo ", "mover el archivo ", "mueve la carpeta ", "mover la carpeta ", "mueve ", "mover ", "traslada ", "trasladar "]:
+            if partes.startswith(p):
+                partes = partes[len(p):].strip()
+                break
+                
+        origen_str = partes
+        destino_str = ""
+        if " a " in partes:
+            origen_str, destino_str = partes.split(" a ", 1)
+        elif " hacia " in partes:
+            origen_str, destino_str = partes.split(" hacia ", 1)
+        elif " en " in partes:
+            origen_str, destino_str = partes.split(" en ", 1)
+
+        origen_str = origen_str.replace("el archivo", "").replace("la carpeta", "").strip()
+        destino_str = destino_str.replace("la carpeta", "").replace("el directorio", "").strip()
+
+        # Buscar origen en Escritorio / Downloads / Directorio actual
+        ruta_origen = origen_str
+        if not os.path.exists(ruta_origen):
+            for b in [os.path.join(os.path.expanduser("~"), "Desktop"), os.path.join(os.path.expanduser("~"), "Downloads"), os.getcwd()]:
+                c = os.path.join(b, origen_str)
+                if os.path.exists(c):
+                    ruta_origen = c
+                    break
+
+        # Buscar destino en Escritorio / Downloads / Directorio actual
+        ruta_destino = destino_str
+        if not os.path.exists(ruta_destino):
+            for b in [os.path.join(os.path.expanduser("~"), "Desktop"), os.path.join(os.path.expanduser("~"), "Downloads"), os.getcwd()]:
+                c = os.path.join(b, destino_str)
+                if os.path.exists(c):
+                    ruta_destino = c
+                    break
+
+        if os.path.exists(ruta_origen) and os.path.exists(ruta_destino):
+            try:
+                shutil.move(ruta_origen, ruta_destino)
+                return f"Señor, he movido exitosamente '{os.path.basename(ruta_origen)}' hacia '{os.path.basename(ruta_destino)}'."
+            except Exception as e_mv:
+                return f"Señor, impedimento al mover el elemento: {e_mv}"
+        else:
+            try:
+                res = subprocess.run(f"mv {origen_str} {destino_str}", shell=True, capture_output=True, text=True)
+                if res.returncode == 0:
+                    return f"Señor, he trasladado '{origen_str}' hacia '{destino_str}' vía consola."
+                else:
+                    return f"Señor, no se localizó de forma explícita el archivo '{origen_str}' o la carpeta de destino '{destino_str}'."
+            except Exception:
+                return f"Señor, no pude completar el traslado de '{origen_str}' hacia '{destino_str}'."
 
     # --- ACCESO DIRECTO A CONSOLA / TERMINAL DE LA MÁQUINA ---
     if cmd_lc.startswith("terminal ") or cmd_lc.startswith("ejecuta ") or cmd_lc.startswith("comando "):
