@@ -144,6 +144,28 @@ class LayoGUIHandler(http.server.BaseHTTPRequestHandler):
                 elif any(k in msg_lc for k in ["ejecuta ", "terminal ", "comando "]):
                     accion = mensaje
 
+            # Detección automática de inconformidad o reporte de error del usuario
+            frases_inconformidad = [
+                "inconforme", "estoy inconforme", "eso estuvo mal", "te equivocaste", 
+                "eso no sirvio", "eso no funciono", "respuesta incorrecta", "no me gusta esa respuesta",
+                "eso no fue lo que te pedi", "fallaste", "error en tu respuesta"
+            ]
+            if any(f in mensaje.lower() for f in frases_inconformidad):
+                peticion_previa = "Petición previa del Señor"
+                if cerebro and hasattr(cerebro, "historial") and len(cerebro.historial) >= 2:
+                    for item in reversed(cerebro.historial[:-1]):
+                        if isinstance(item, dict) and item.get("role") == "user":
+                            peticion_previa = item.get("content", peticion_previa)
+                            break
+
+                self.agente.registrar_error_y_aprender(
+                    "Inconformidad de Usuario",
+                    peticion_previa,
+                    f"El Señor reportó: '{mensaje}'",
+                    cerebro
+                )
+                respuesta_texto += " Señor, he registrado este fallo en mi base de datos de auto-aprendizaje SQLite (layo_agent_memory.db) y he guardado la reflexión para no volver a repetirlo."
+
             # Si hay una acción de sistema solicitada por la IA o inferida
             if accion:
                 try:
