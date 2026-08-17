@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Binary downloads
+bin/
+Voz/*.zip
+*.tgz
+*.tar.zst
+
+# Temporary WAV files
+temp*.wav
+
+# Local SQLite & Memory
+layo_agent_memory.db
+memoria_layo.json
