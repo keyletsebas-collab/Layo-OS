@@ -129,7 +129,15 @@ class LayoGUIHandler(http.server.BaseHTTPRequestHandler):
             # Inferencia automática de acción respaldada si la IA no incluyó etiqueta explícita
             if not accion and mensaje:
                 msg_lc = mensaje.lower()
-                if "carpeta" in msg_lc and any(k in msg_lc for k in ["crea", "crear", "haz", "hacer", "nueva", "genera"]):
+                if "carpeta" in msg_lc and any(k in msg_lc for k in ["cierra", "cerrar"]):
+                    accion = mensaje
+                elif "carpeta" in msg_lc and any(k in msg_lc for k in ["elimina", "eliminar", "borra", "borrar"]):
+                    accion = mensaje
+                elif "carpeta" in msg_lc and any(k in msg_lc for k in ["renombra", "renombrar", "edita", "editar", "cambia el nombre"]):
+                    accion = mensaje
+                elif "carpeta" in msg_lc and any(k in msg_lc for k in ["crea", "crear", "haz", "hacer", "nueva", "genera"]):
+                    accion = mensaje
+                elif "carpeta" in msg_lc and any(k in msg_lc for k in ["abre", "abrir"]):
                     accion = mensaje
                 elif any(k in msg_lc for k in ["mueve ", "mover ", "traslada "]):
                     accion = mensaje

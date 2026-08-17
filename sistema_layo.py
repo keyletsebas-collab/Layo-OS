@@ -1265,6 +1265,93 @@ def ejecutar_comando_sistema(comando, motor_voz, escuchar_func, cerebro=None):
     cmd = comando.strip()
     cmd_lc = cmd.lower()
 
+    # --- CERRAR CARPETAS / VENTANAS DEL EXPLORADOR ---
+    if "carpeta" in cmd_lc and any(k in cmd_lc for k in ["cierra", "cerrar"]):
+        nom_c = cmd_lc
+        for l in ["cierra la carpeta llamada", "cierra la carpeta", "cerrar la carpeta", "cierra carpeta", "cerrar carpeta", "cierra"]:
+            nom_c = nom_c.replace(l, "")
+        nom_c = nom_c.strip().strip('"').strip("'")
+        
+        cerrados = 0
+        import psutil
+        for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+            try:
+                cmdline = " ".join(proc.info['cmdline'] or []).lower()
+                name = (proc.info['name'] or "").lower()
+                if any(fm in name for fm in ["cosmic-files", "nautilus", "thunar", "dolphin", "nemo", "explorer.exe"]):
+                    if not nom_c or nom_c in cmdline:
+                        proc.terminate()
+                        cerrados += 1
+            except Exception:
+                continue
+        if cerrados > 0:
+            return f"Señor, he cerrado la ventana de la carpeta '{nom_c}' exitosamente."
+        else:
+            subprocess.run(["pkill", "-f", "cosmic-files"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return f"Señor, he enviado la instrucción para cerrar las ventanas de carpetas."
+
+    # --- ELIMINAR / BORRAR CARPETAS ---
+    if "carpeta" in cmd_lc and any(k in cmd_lc for k in ["elimina", "eliminar", "borra", "borrar"]):
+        import shutil
+        nom_c = cmd_lc
+        for l in ["elimina la carpeta llamada", "eliminar la carpeta llamada", "borra la carpeta llamada", "borrar la carpeta llamada", "elimina la carpeta", "eliminar la carpeta", "borra la carpeta", "borrar la carpeta", "elimina carpeta", "borra carpeta", "elimina", "borra", "eliminar", "borrar"]:
+            nom_c = nom_c.replace(l, "")
+        nom_c = nom_c.strip().strip('"').strip("'")
+        
+        ruta_elim = nom_c
+        if not os.path.exists(ruta_elim):
+            for b in [os.path.join(os.path.expanduser("~"), "Desktop"), os.path.join(os.path.expanduser("~"), "Downloads"), os.getcwd()]:
+                cand = os.path.join(b, nom_c)
+                if os.path.exists(cand):
+                    ruta_elim = cand
+                    break
+
+        if os.path.exists(ruta_elim):
+            try:
+                if os.path.isdir(ruta_elim):
+                    shutil.rmtree(ruta_elim)
+                else:
+                    os.remove(ruta_elim)
+                return f"Señor, he eliminado permanentemente la carpeta '{os.path.basename(ruta_elim)}' de sus discos."
+            except Exception as e_del:
+                return f"Señor, encontré una dificultad al eliminar la carpeta: {e_del}"
+        else:
+            return f"Señor, no se localizó la carpeta '{nom_c}' en su equipo para proceder con la eliminación."
+
+    # --- RENOMBRAR / EDITAR NOMBRE DE CARPETAS ---
+    if "carpeta" in cmd_lc and any(k in cmd_lc for k in ["renombra", "renombrar", "edita", "editar", "cambia el nombre"]):
+        partes = cmd_lc
+        for l in ["renombra la carpeta ", "renombrar la carpeta ", "cambia el nombre de la carpeta ", "edita la carpeta ", "renombra ", "renombrar ", "edita ", "editar "]:
+            if partes.startswith(l):
+                partes = partes[len(l):].strip()
+                break
+        
+        nom_antiguo = partes
+        nom_nuevo = ""
+        if " a " in partes:
+            nom_antiguo, nom_nuevo = partes.split(" a ", 1)
+        elif " por " in partes:
+            nom_antiguo, nom_nuevo = partes.split(" por ", 1)
+
+        nom_antiguo = nom_antiguo.replace("llamada", "").replace("carpeta", "").strip()
+        nom_nuevo = nom_nuevo.replace("llamada", "").replace("carpeta", "").strip()
+
+        ruta_ant = nom_antiguo
+        if not os.path.exists(ruta_ant):
+            for b in [os.path.join(os.path.expanduser("~"), "Desktop"), os.path.join(os.path.expanduser("~"), "Downloads"), os.getcwd()]:
+                cand = os.path.join(b, nom_antiguo)
+                if os.path.exists(cand):
+                    ruta_ant = cand
+                    break
+
+        if os.path.exists(ruta_ant) and nom_nuevo:
+            ruta_nuev = os.path.join(os.path.dirname(ruta_ant), nom_nuevo)
+            try:
+                os.rename(ruta_ant, ruta_nuev)
+                return f"Señor, he renombrado la carpeta '{os.path.basename(ruta_ant)}' a '{nom_nuevo}' exitosamente."
+            except Exception as e_ren:
+                return f"Señor, encontré un impedimento al renombrar la carpeta: {e_ren}"
+
     # --- CREACIÓN FÍSICA DE CARPETAS / DIRECTORIOS EN EL DISCO ---
     if "carpeta" in cmd_lc and any(k in cmd_lc for k in ["crea", "crear", "haz", "hacer", "nueva", "genera", "generar"]):
         nombre_c = cmd_lc
