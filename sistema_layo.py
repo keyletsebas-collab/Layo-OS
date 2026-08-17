@@ -1053,6 +1053,37 @@ class CerebroJarvis:
         EMOCION_ACTUAL = "Calmado"
         return f"Señor, estoy operando en modo local desconectado. ¿En qué le puedo asistir con los comandos del equipo?", None
 
+def generar_codigo_inteligente(indicacion):
+    # 1. Intentar con Ollama Local (100% Offline)
+    try:
+        url = "http://localhost:11434/api/chat"
+        prompt = (
+            f"Genera el código para la siguiente solicitud: '{indicacion}'. "
+            "Responde ÚNICAMENTE con un JSON válido sin texto previo ni posterior ni marcas markdown, con el formato exacto: "
+            '{"nombre_archivo": "archivo.py", "codigo": "tu codigo aqui"}'
+        )
+        payload = {
+            "model": "llama3.2:1b",
+            "messages": [{"role": "user", "content": prompt}],
+            "stream": False,
+            "options": {"temperature": 0.2, "num_predict": 400}
+        }
+        r = requests.post(url, json=payload, timeout=25)
+        if r.status_code == 200:
+            content = r.json().get("message", {}).get("content", "")
+            import re, json
+            match = re.search(r'\{.*\}', content, re.DOTALL)
+            if match:
+                datos = json.loads(match.group(0))
+                nom = datos.get("nombre_archivo", "codigo_generado.py")
+                cod = datos.get("codigo", "")
+                if nom and cod:
+                    return nom, cod
+    except Exception as e:
+        print(f"[Ollama Code Gen]: {e}")
+        
+    return generar_codigo_con_gemini(indicacion)
+
 def generar_codigo_con_gemini(indicacion):
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
@@ -1535,7 +1566,7 @@ def ejecutar_comando_sistema(comando, motor_voz, escuchar_func, cerebro=None):
         # Proceder
         motor_voz.hablar("Entendido, Señor. Estoy compilando las instrucciones y generando el código solicitado en mis sistemas neuronales. Espere un instante.")
         
-        nombre_archivo, codigo_generado = generar_codigo_con_gemini(indicacion)
+        nombre_archivo, codigo_generado = generar_codigo_inteligente(indicacion)
         
         if nombre_archivo and codigo_generado:
             try:
